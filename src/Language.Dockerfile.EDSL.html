@@ -1,0 +1,158 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE FlexibleContexts #-}</span><span>
+</span><a name="line-2"></a><span class="hs-pragma">{-# LANGUAGE MultiParamTypeClasses #-}</span><span>
+</span><a name="line-3"></a><span class="hs-pragma">{-# LANGUAGE TemplateHaskell #-}</span><span>
+</span><a name="line-4"></a><span>
+</span><a name="line-5"></a><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Language</span><span class="hs-operator">.</span><span class="hs-identifier">Dockerfile</span><span class="hs-operator">.</span><span class="hs-identifier">EDSL</span><span> </span><span class="hs-keyword">where</span><span>
+</span><a name="line-6"></a><span>
+</span><a name="line-7"></a><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">Control</span><span class="hs-operator">.</span><span class="hs-identifier">Monad</span><span class="hs-operator">.</span><span class="hs-identifier">Free</span><span>
+</span><a name="line-8"></a><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">Control</span><span class="hs-operator">.</span><span class="hs-identifier">Monad</span><span class="hs-operator">.</span><span class="hs-identifier">Free</span><span class="hs-operator">.</span><span class="hs-identifier">TH</span><span>
+</span><a name="line-9"></a><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">Control</span><span class="hs-operator">.</span><span class="hs-identifier">Monad</span><span class="hs-operator">.</span><span class="hs-identifier">Trans</span><span class="hs-operator">.</span><span class="hs-identifier">Free</span><span> </span><span class="hs-special">(</span><span class="hs-identifier hs-type">FreeT</span><span class="hs-special">,</span><span> </span><span class="hs-identifier hs-var">iterTM</span><span class="hs-special">)</span><span>
+</span><a name="line-10"></a><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">Control</span><span class="hs-operator">.</span><span class="hs-identifier">Monad</span><span class="hs-operator">.</span><span class="hs-identifier">Writer</span><span>
+</span><a name="line-11"></a><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">Data</span><span class="hs-operator">.</span><span class="hs-identifier">ByteString</span><span> </span><span class="hs-special">(</span><span class="hs-identifier hs-type">ByteString</span><span class="hs-special">)</span><span>
+</span><a name="line-12"></a><span>
+</span><a name="line-13"></a><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><a href="Language.Dockerfile.PrettyPrint.html"><span class="hs-identifier">Language</span><span class="hs-operator">.</span><span class="hs-identifier">Dockerfile</span><span class="hs-operator">.</span><span class="hs-identifier">PrettyPrint</span></a><span> </span><span class="hs-keyword">as</span><span> </span><span class="hs-identifier">PrettyPrint</span><span>
+</span><a name="line-14"></a><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><a href="Language.Dockerfile.Syntax.html"><span class="hs-identifier">Language</span><span class="hs-operator">.</span><span class="hs-identifier">Dockerfile</span><span class="hs-operator">.</span><span class="hs-identifier">Syntax</span></a><span> </span><span class="hs-keyword">as</span><span> </span><span class="hs-identifier">Syntax</span><span>
+</span><a name="line-15"></a><span>
+</span><a name="line-16"></a><span class="hs-keyword">import</span><span> </span><a href="Language.Dockerfile.EDSL.Types.html"><span class="hs-identifier">Language</span><span class="hs-operator">.</span><span class="hs-identifier">Dockerfile</span><span class="hs-operator">.</span><span class="hs-identifier">EDSL</span><span class="hs-operator">.</span><span class="hs-identifier">Types</span></a><span>
+</span><a name="line-17"></a><span>
+</span><a name="line-18"></a><span class="hs-comment">-- | The type of 'Identity' based EDSL blocks</span><span>
+</span><a name="line-19"></a><span class="hs-keyword">type</span><span> </span><a name="EDockerfileM"><a href="Language.Dockerfile.EDSL.html#EDockerfileM"><span class="hs-identifier">EDockerfileM</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-identifier hs-type">Free</span><span> </span><a href="Language.Dockerfile.EDSL.Types.html#EInstruction"><span class="hs-identifier hs-type">EInstruction</span></a><span>
+</span><a name="line-20"></a><span>
+</span><a name="line-21"></a><span class="hs-comment">-- | The type of free monad EDSL blocks</span><span>
+</span><a name="line-22"></a><span class="hs-keyword">type</span><span> </span><a name="EDockerfileTM"><a href="Language.Dockerfile.EDSL.html#EDockerfileTM"><span class="hs-identifier">EDockerfileTM</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-identifier hs-type">FreeT</span><span> </span><a href="Language.Dockerfile.EDSL.Types.html#EInstruction"><span class="hs-identifier hs-type">EInstruction</span></a><span>
+</span><a name="line-23"></a><span>
+</span><a name="line-24"></a><span class="hs-keyword">type</span><span> </span><a name="EInstructionM"><a href="Language.Dockerfile.EDSL.html#EInstructionM"><span class="hs-identifier">EInstructionM</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-identifier hs-type">Free</span><span> </span><a href="Language.Dockerfile.EDSL.Types.html#EInstruction"><span class="hs-identifier hs-type">EInstruction</span></a><span>
+</span><a name="line-25"></a><span>
+</span><a name="line-26"></a><span class="hs-keyword">type</span><span> </span><a name="EInstructionTM"><a href="Language.Dockerfile.EDSL.html#EInstructionTM"><span class="hs-identifier">EInstructionTM</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-identifier hs-type">FreeT</span><span> </span><a href="Language.Dockerfile.EDSL.Types.html#EInstruction"><span class="hs-identifier hs-type">EInstruction</span></a><span>
+</span><a name="line-27"></a><span>
+</span><a name="line-28"></a><span class="hs-identifier hs-var">makeFree</span><span> </span><span class="hs-char">''EInstruction
+
+runDockerWriter :: (MonadWriter [Syntax.Instruction] m) =&gt; EDockerfileM a -&gt; m a
+runDockerWriter = iterM runD
+
+runDockerWriterIO ::
+       (Monad m, MonadTrans t, Monad (t m), MonadWriter [Syntax.Instruction] (t m), MonadIO (t m))
+    =&gt; EDockerfileTM m a
+    -&gt; t m a
+runDockerWriterIO = iterTM runD
+
+runDef :: MonadWriter [t] m =&gt; (t1 -&gt; t) -&gt; t1 -&gt; m b -&gt; m b
+runDef f a n = tell [f a] &gt;&gt; n
+
+runDef2 :: MonadWriter [t] m =&gt; (t1 -&gt; t2 -&gt; t) -&gt; t1 -&gt; t2 -&gt; m b -&gt; m b
+runDef2 f a b n = tell [f a b] &gt;&gt; n
+
+runD :: MonadWriter [Syntax.Instruction] m =&gt; EInstruction (m b) -&gt; m b
+runD (From bi n) =
+    case bi of
+        EUntaggedImage bi' -&gt; runDef Syntax.From (Syntax.UntaggedImage bi') n
+        ETaggedImage bi' tg -&gt; runDef Syntax.From (Syntax.TaggedImage bi' tg) n
+        EDigestedImage bi' d -&gt; runDef Syntax.From (Syntax.DigestedImage bi' d) n
+runD (CmdArgs as n) = runDef Syntax.Cmd as n
+runD (Shell as n) = runDef Syntax.Shell as n
+runD (Add s d n) = runDef2 Syntax.Add s d n
+runD (User u n) = runDef Syntax.User u n
+runD (Label ps n) = runDef Syntax.Label ps n
+runD (StopSignal s n) = runDef Syntax.Stopsignal s n
+runD (Copy s d n) = runDef2 Syntax.Copy s d n
+runD (RunArgs as n) = runDef Syntax.Run as n
+runD (Workdir d n) = runDef Syntax.Workdir d n
+runD (Expose ps n) = runDef Syntax.Expose ps n
+runD (Volume v n) = runDef Syntax.Volume v n
+runD (EntrypointArgs e n) = runDef Syntax.Entrypoint e n
+runD (Maintainer m n) = runDef Syntax.Maintainer m n
+runD (Env ps n) = runDef Syntax.Env ps n
+runD (Arg s n) = runDef Syntax.Arg s n
+runD (Comment c n) = runDef Syntax.Comment c n
+runD (Healthcheck c n) = runDef Syntax.Healthcheck c n
+runD (OnBuildRaw i n) = runDef Syntax.OnBuild i n
+runD (Embed is n) = do
+    tell (map Syntax.instruction is)
+    n
+
+instructionPos :: Syntax.Instruction -&gt; Syntax.InstructionPos
+instructionPos i = Syntax.InstructionPos i &quot;&quot; 0
+
+-- | Runs the Dockerfile EDSL and returns a 'Dockerfile' you can pretty print
+-- or manipulate
+toDockerfile :: EDockerfileM a -&gt; Syntax.Dockerfile
+toDockerfile e =
+    let (_, w) = runWriter (runDockerWriter e)
+    in map instructionPos w
+
+-- | runs the Dockerfile EDSL and returns a 'String' using
+-- 'Language.Dockerfile.PrettyPrint'
+--
+-- @
+-- import           Language.Dockerfile
+--
+-- main :: IO ()
+-- main = writeFile &quot;something.dockerfile&quot; $ toDockerfileStr $ do
+--     from (tagged &quot;fpco/stack-build&quot; &quot;lts-6.9&quot;)
+--     add &quot;.&quot; &quot;/app/language-dockerfile&quot;
+--     workdir &quot;/app/language-dockerfile&quot;
+--     run (words &quot;stack build --test --only-dependencies&quot;)
+--     cmd (words &quot;stack test&quot;)
+-- @
+toDockerfileStr :: EDockerfileM a -&gt; String
+toDockerfileStr = PrettyPrint.prettyPrint . toDockerfile
+
+untagged :: String -&gt; EBaseImage
+untagged = EUntaggedImage
+
+tagged :: String -&gt; String -&gt; EBaseImage
+tagged = ETaggedImage
+
+digested :: String -&gt; ByteString -&gt; EBaseImage
+digested = EDigestedImage
+
+ports :: [Integer] -&gt; Syntax.Ports
+ports = Syntax.Ports
+
+port :: Integer -&gt; Syntax.Ports
+port = Syntax.Ports . (: [])
+
+run :: MonadFree EInstruction m =&gt; String -&gt; m ()
+run = runArgs . words
+
+entrypoint :: MonadFree EInstruction m =&gt; String -&gt; m ()
+entrypoint = entrypointArgs . words
+
+cmd :: MonadFree EInstruction m =&gt; String -&gt; m ()
+cmd = cmdArgs . words
+
+-- | ONBUILD Dockerfile instruction
+--
+-- Each nested instruction gets emitted as a separate @ONBUILD@ block
+--
+-- @
+-- 'toDockerfile' $ do
+--     from &quot;node&quot;
+--     run &quot;apt-get update&quot;
+--     onBuild $ do
+--         run &quot;echo more-stuff&quot;
+--         run &quot;echo here&quot;
+-- @
+onBuild :: MonadFree EInstruction m =&gt; EDockerfileM a -&gt; m ()
+onBuild b = mapM_ (onBuildRaw . Syntax.instruction) (toDockerfile b)
+
+-- | A version of 'toDockerfile' which allows IO actions
+toDockerfileIO :: MonadIO m =&gt; EDockerfileTM m t -&gt; m Syntax.Dockerfile
+toDockerfileIO e = fmap snd (runDockerfileIO e)
+
+-- | A version of 'toDockerfileStr' which allows IO actions
+toDockerfileStrIO :: MonadIO m =&gt; EDockerfileTM m t -&gt; m String
+toDockerfileStrIO e = fmap snd (runDockerfileStrIO e)
+
+-- | Just runs the EDSL's writer monad
+runDockerfileIO :: MonadIO m =&gt; EDockerfileTM m t -&gt; m (t, Syntax.Dockerfile)
+runDockerfileIO e = do
+    (r, w) &lt;- runWriterT (runDockerWriterIO e)
+    return (r, map instructionPos w)
+
+-- | Runs the EDSL's writer monad and pretty-prints the result
+runDockerfileStrIO :: MonadIO m =&gt; EDockerfileTM m t -&gt; m (t, String)
+runDockerfileStrIO e = do
+    (r, w) &lt;- runDockerfileIO e
+    return (r, PrettyPrint.prettyPrint w)
+</span></pre></body></html>
